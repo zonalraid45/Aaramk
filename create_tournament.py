@@ -10,8 +10,8 @@ from zoneinfo import ZoneInfo   # Python ≥3.9
 
 # ─────────────── Settings ───────────────
 TOKEN   = os.environ["LICHESS_KEY"].strip('"')
-TEAM    = "testingsgirl"
-ROUNDS  = 8
+TEAM    = "chess-blasters-2"
+ROUNDS  = 7
 INTERVAL = 30                   # seconds between rounds
 IST     = ZoneInfo("Asia/Kolkata")
 
@@ -91,7 +91,7 @@ def next_occurrence(time_str: str) -> dt.datetime:
 
 def create_tmt(idx: int, name: str, minutes: int, inc: int, start_utc: dt.datetime) -> None:
     payload = {
-        "name":            f"{name} {minutes}+{inc}"[:30],
+        "name":            f"{name}"[:30],
         "clock.limit":     minutes * 60,
         "clock.increment": inc,
         "startsAt":        start_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
