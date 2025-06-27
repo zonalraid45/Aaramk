@@ -1,49 +1,114 @@
-#!/usr/bin/env python3 """ Grand Chess Championship scheduler (48 Swiss events)
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Create a full day of Swiss tournaments according to the timetable
+supplied by Utsa.  All times are interpreted in Asia/Kolkata (IST)
+and sent to the Lichess API in UTC.
+"""
+import os, datetime as dt, pathlib, requests
+from zoneinfo import ZoneInfo   # Python ≥3.9
 
-ASCII‑only docstring to avoid Unicode parsing errors.
+# ─────────────── Settings ───────────────
+TOKEN   = os.environ["LICHESS_KEY"].strip('"')
+TEAM    = "testingsgirl"
+ROUNDS  = 8
+INTERVAL = 30                   # seconds between rounds
+IST     = ZoneInfo("Asia/Kolkata")
 
-Starts at 00:00 IST (next midnight), one every 30 minutes until 23:30 IST.
+headers = {"Authorization": f"Bearer {TOKEN}"}
+URL     = f"https://lichess.org/api/swiss/new/{TEAM}"
 
-7 rounds each; automatic round spacing (interval omitted).
+# ---------- read long description once ----------
+DESC_FILE = pathlib.Path(__file__).with_name("description.txt")
+try:
+    LONG_DESC = DESC_FILE.read_text(encoding="utf-8").strip()
+except FileNotFoundError:
+    raise SystemExit("❌ description.txt not found!")
 
-Time controls follow the 12‑item pattern (10+0, 7+2, 3+2, 3+0, 5+0, 10+5, 10+0, 7+2, 3+2, 3+0, 5+0, 3+1) repeated four times.
+# ─────────────── Timetable ───────────────
+SCHEDULE = [
+    #  time ,      title,      min, inc
+    ("00:00", "Grand Chess Championship",    10,  0),
+    ("00:30", "Grand Chess Championship",    7,  2),
+    ("01:00", "Grand Chess Championship",    3,  2),
+    ("01:30", "Grand Chess Championship",    3,  0),
+    ("02:00", "Grand Chess Championship",    5,  0),
+    ("02:30", "Grand Chess Championship",   10,  5),
+    ("03:00", "Grand Chess Championship",  10,   0),
+    ("03:30", "Grand Chess Championship",    7,  2),
+    ("04:00", "Grand Chess Championship",    3,  2),
+    ("04:30", "Grand Chess Championship",    3,  0),
+    ("05:00", "Grand Chess Championship",    5,  0),
+    ("05:30", "Grand Chess Championship",    3,  1),
+    ("06:00", "Grand Chess Championship",   10,  0),
+    ("06:30", "Grand Chess Championship",    7,  2),
+    ("07:00", "Grand Chess Championship",    3,  2),
+    ("07:30", "Grand Chess Championship",  3,  0),
+    ("08:00", "Grand Chess Championship",    5,  0),
+    ("08:30", "Grand Chess Championship",   10,  5),
+    ("09:00", "Grand Chess Championship",  10,  0),
+    ("09:30", "Grand Chess Championship",    7,  2),
+    ("10:00", "Grand Chess Championship",    3,  2),
+    ("10:30", "Grand Chess Championship",    3,  0),
+    ("11:00", "Grand Chess Championship",    5,  0),
+    ("11:30", "Grand Chess Championship",    3,  0),
+    ("12:00", "Grand Chess Championship",    3,  1),
+    ("12:30", "Grand Chess Championship",   10,  0),
+    ("13:00", "Grand Chess Championship",  7,  2),
+    ("13:30", "Grand Chess Championship",  3,  2),
+    ("14:00", "Grand Chess Championship",    3,  0),
+    ("14:30", "Grand Chess Championship",    5,  0),
+    ("15:00", "Grand Chess Championship",   10, 5),
+    ("15:30", "Grand Chess Championship",    10,  0),
+    ("16:00", "Grand Chess Championship",     7,  2),
+    ("16:30", "Grand Chess Championship",    3,  2),
+    ("17:00", "Grand Chess Championship",    3,  0),
+    ("17:30", "Grand Chess Championship",  5,  0),
+    ("18:00", "Grand Chess Championship",    3,  1),
+    ("18:30", "Grand Chess Championship",   10,  0),
+    ("19:00", "Grand Chess Championship",    7,  2),
+    ("19:30", "Grand Chess Championship",   3,  2),
+    ("20:00", "Grand Chess Championship",    3,  0),
+    ("20:30", "Grand Chess Championship",    5,  0),
+    ("21:00", "Grand Chess Championship",   10,  5),
+    ("21:30", "Grand Chess Championship",   10,  0),
+    ("22:00", "Grand Chess Championship",    7,  2),
+    ("22:30", "Grand Chess Championship",    3,  2),
+    ("23:00", "Grand Chess Championship",    3,  1),
+    ("23:30", "Grand Chess Championship",    5,  0),
+]
 
+# ─────────────── Helper ───────────────
+def next_occurrence(time_str: str) -> dt.datetime:
+    """Return the next datetime (≥ now + 5 min) for HH:MM in IST."""
+    hh, mm = map(int, time_str.split(":"))
+    today   = dt.date.today()
+    now_ist = dt.datetime.now(IST)
+    cand    = dt.datetime.combine(today, dt.time(hh, mm), tzinfo=IST)
+    if cand < now_ist + dt.timedelta(minutes=5):
+        cand += dt.timedelta(days=1)
+    return cand.astimezone(dt.timezone.utc)   # convert to UTC
 
-Run this script any time before tournament day; it calculates UTC start times. """
+def create_tmt(idx: int, name: str, minutes: int, inc: int, start_utc: dt.datetime) -> None:
+    payload = {
+        "name":            f"{name} {minutes}+{inc}"[:30],
+        "clock.limit":     minutes * 60,
+        "clock.increment": inc,
+        "startsAt":        start_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "nbRounds":        ROUNDS,
+        "interval":        INTERVAL,
+        "variant":         "standard",
+        "rated":           "true",
+        "description":     LONG_DESC,
+    }
+    r = requests.post(URL, headers=headers, data=payload, timeout=15)
+    if r.status_code == 200:
+        print(f"✅  {payload['name']:<25} →", r.json().get("url"))
+    else:
+        print(f"❌  {payload['name']:<25} ({r.status_code}) {r.text[:120]}")
 
-import os import pathlib import datetime as dt from zoneinfo import ZoneInfo import requests
-
-Settings
-
-TOKEN = os.environ.get("LICHESS_KEY", "").strip('"') if not TOKEN: raise SystemExit("LICHESS_KEY environment variable is missing!")
-
-TEAM = "testingsgirl"  # Change to your team slug ROUNDS = 7             # Rounds per tournament GAP_MIN = 30           # Minutes between successive tournaments
-
-Time‑control pattern: (initial seconds, increment seconds)
-
-_BASE_PATTERN = [ (600, 0), (420, 2), (180, 2), (180, 0), (300, 0), (600, 5), (600, 0), (420, 2), (180, 2), (180, 0), (300, 0), (180, 1), ] TIME_CONTROLS = _BASE_PATTERN * 4  # 48 tournaments
-
-HEADERS = {"Authorization": f"Bearer {TOKEN}"} URL = f"https://lichess.org/api/swiss/new/{TEAM}"
-
-Long description
-
-DESC_FILE = pathlib.Path(file).with_name("description.txt") try: LONG_DESC = DESC_FILE.read_text(encoding="utf-8").strip() except FileNotFoundError: raise SystemExit("description.txt not found alongside the script!")
-
-Helper functions
-
-def next_midnight_ist() -> dt.datetime: """Return the next 00:00 in Asia/Kolkata as an aware datetime.""" ist = ZoneInfo("Asia/Kolkata") now = dt.datetime.now(ist) midnight = now.replace(hour=0, minute=0, second=0, microsecond=0) if now >= midnight: midnight += dt.timedelta(days=1) return midnight
-
-def create_one(idx: int, start_utc: dt.datetime, limit: int, increment: int) -> None: payload = { "name": "Grand Chess Championship", "clock.limit":     limit, "clock.increment": increment, "startsAt":        start_utc.strftime("%Y-%m-%dT%H:%M:%SZ"), "nbRounds":        ROUNDS, "variant":         "standard", "rated":           "true", "description":     LONG_DESC, }
-
-r = requests.post(URL, headers=HEADERS, data=payload)
-if r.status_code == 200:
-    print(f"Created tournament #{idx+1}:", r.json().get("url"))
-else:
-    print(f"Error tournament #{idx+1}:", r.status_code, r.text)
-
-if name == "main": first_start_ist = next_midnight_ist() first_start_utc = first_start_ist.astimezone(dt.timezone.utc)
-
-for i, (limit, inc) in enumerate(TIME_CONTROLS):
-    start_time = first_start_utc + dt.timedelta(minutes=i * GAP_MIN)
-    create_one(i, start_time, limit, inc)
-
+# ─────────────── Main ───────────────
+if __name__ == "__main__":
+    for idx, (t, title, mins, inc) in enumerate(SCHEDULE):
+        start = next_occurrence(t)
+        create_tmt(idx, title, mins, inc, start)
