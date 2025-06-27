@@ -4,11 +4,15 @@
 
 Run any time before the target day; it computes the correct UTC start times. """
 
-import os import pathlib import datetime as dt from zoneinfo import ZoneInfo import requests
+import os
+import pathlib 
+import datetime as dt 
+from zoneinfo import ZoneInfo 
+import requests
 
 ───────── Settings ─────────
 
-TOKEN = os.environ["LICHESS_KEY"].strip('"') TEAM = "testingsboy"              # Swiss team slug ROUNDS = 7                         # rounds per tournament GAP_MIN = 30                       # minutes between tournament starts
+TOKEN = os.environ["LICHESS_KEY"].strip('"') TEAM = "testingsgirl"              # Swiss team slug ROUNDS = 7                         # rounds per tournament GAP_MIN = 30                       # minutes between tournament starts
 
 (initial seconds, increment seconds)
 
