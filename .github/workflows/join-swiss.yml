@@ -1,0 +1,29 @@
+name: Manually Join Chess-Blasters-2 Swiss Tournaments
+
+# This workflow has **no cron schedule**.
+# It runs only when you click “Run workflow” in the Actions tab
+# or call the GitHub Actions API/gh-CLI with a workflow_dispatch event.
+
+on:
+  workflow_dispatch:      # manual trigger only
+
+jobs:
+  join:
+    runs-on: ubuntu-latest
+    env:
+      TOKEN1: ${{ secrets.TOKEN1 }}
+      TOKEN2: ${{ secrets.TOKEN2 }}
+      TOKEN3: ${{ secrets.TOKEN3 }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install --quiet requests
+
+      - name: Run joiner script
+        run: python join_swiss.py
