@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Auto-join all *up-coming* Swiss tournaments of the Chess-Blasters-2 team
-using any repo secrets named TOKEN1, TOKEN2, TOKEN3, … (add more as needed).
+Auto-join all *up-coming* Swiss tournaments of the Chess-Blasters-2 team.
+Uses every repo secret named TOKEN1, TOKEN2, TOKEN3, … as a Lichess token.
 """
 
 import os
@@ -12,42 +12,42 @@ import requests
 
 TEAM_ID = "chess-blasters-2"
 API_ROOT = "https://lichess.org/api"
-
-# Ask explicitly for NDJSON so we can parse line-by-line
 HEADERS_NDJSON = {"Accept": "application/x-ndjson"}
 
 
 def env_tokens(prefix: str = "TOKEN"):
-    """Yield every non-empty env var whose name starts with TOKEN."""
     for k, v in os.environ.items():
         if k.startswith(prefix) and v:
             yield v
 
 
 def get_upcoming_swiss() -> list[dict]:
-    """
-    Return a list of Swiss-tournament objects that haven’t started yet.
-    /team/{id}/swiss streams NDJSON, so we read it line-by-line.
-    """
     url = f"{API_ROOT}/team/{TEAM_ID}/swiss"
     res = requests.get(url, headers=HEADERS_NDJSON, timeout=15)
     res.raise_for_status()
 
     now_ms = time.time() * 1000
-    tournaments: list[dict] = []
+    swiss = []
 
     for line in res.iter_lines(decode_unicode=True):
         if not line:
-            continue                    # skip blank lines
+            continue
         obj = json.loads(line)
-        if obj.get("startsAt", 0) > now_ms:
-            tournaments.append(obj)
 
-    return tournaments
+        # --- NEW: robust start-time parsing ---------------------------------
+        try:
+            starts_at = int(obj.get("startsAt", 0))
+        except (TypeError, ValueError):
+            continue  # skip if startsAt missing or non-numeric
+        # --------------------------------------------------------------------
+
+        if starts_at > now_ms:
+            swiss.append(obj)
+
+    return swiss
 
 
 def join(token: str, swiss_id: str):
-    """Send POST request to join a Swiss tournament with a given token."""
     url = f"{API_ROOT}/swiss/{swiss_id}/join"
     res = requests.post(url,
                         headers={"Authorization": f"Bearer {token}"},
@@ -63,19 +63,17 @@ def join(token: str, swiss_id: str):
 
 def main():
     logging.basicConfig(level=logging.INFO, format="%(message)s")
-    swiss_list = get_upcoming_swiss()
-
-    if not swiss_list:
+    tournaments = get_upcoming_swiss()
+    if not tournaments:
         logging.info("No upcoming Swiss tournaments to join.")
         return
 
-    for t in swiss_list:
+    for t in tournaments:
         swiss_id = t["id"]
         name = t.get("name", "Unnamed")
         start = time.strftime("%Y-%m-%d %H:%M:%S",
-                              time.localtime(t["startsAt"] / 1000))
-        logging.info("→ Swiss ID: %s | Name: %s | Starts at: %s",
-                     swiss_id, name, start)
+                              time.localtime(int(t["startsAt"]) / 1000))
+        logging.info("→ %s | %s | Starts: %s", swiss_id, name, start)
         for token in env_tokens():
             join(token, swiss_id)
 
