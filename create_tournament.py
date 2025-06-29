@@ -12,7 +12,6 @@ from zoneinfo import ZoneInfo   # Python ≥3.9
 TOKEN   = os.environ["LICHESS_KEY"].strip('"')
 TEAM    = "chess-blasters-2"
 ROUNDS  = 7
-INTERVAL = 30                   # seconds between rounds
 IST     = ZoneInfo("Asia/Kolkata")
 
 headers = {"Authorization": f"Bearer {TOKEN}"}
@@ -29,53 +28,53 @@ except FileNotFoundError:
 SCHEDULE = [
     #  time ,      title,      min, inc
     ("00:00", "Grand Chess Championship",    10,  0),
-    ("00:30", "Grand Chess Championship",    7,  2),
-    ("01:00", "Grand Chess Championship",    3,  2),
-    ("01:30", "Grand Chess Championship",    3,  0),
-    ("02:00", "Grand Chess Championship",    5,  0),
-    ("02:30", "Grand Chess Championship",   10,  5),
-    ("03:00", "Grand Chess Championship",  10,   0),
-    ("03:30", "Grand Chess Championship",    7,  2),
-    ("04:00", "Grand Chess Championship",    3,  2),
-    ("04:30", "Grand Chess Championship",    3,  0),
-    ("05:00", "Grand Chess Championship",    5,  0),
-    ("05:30", "Grand Chess Championship",    3,  1),
-    ("06:00", "Grand Chess Championship",   10,  0),
-    ("06:30", "Grand Chess Championship",    7,  2),
-    ("07:00", "Grand Chess Championship",    3,  2),
-    ("07:30", "Grand Chess Championship",  3,  0),
-    ("08:00", "Grand Chess Championship",    5,  0),
-    ("08:30", "Grand Chess Championship",   10,  5),
-    ("09:00", "Grand Chess Championship",  10,  0),
-    ("09:30", "Grand Chess Championship",    7,  2),
-    ("10:00", "Grand Chess Championship",    3,  2),
-    ("10:30", "Grand Chess Championship",    3,  0),
-    ("11:00", "Grand Chess Championship",    5,  0),
-    ("11:30", "Grand Chess Championship",    3,  0),
-    ("12:00", "Grand Chess Championship",    3,  1),
-    ("12:30", "Grand Chess Championship",   10,  0),
-    ("13:00", "Grand Chess Championship",  7,  2),
-    ("13:30", "Grand Chess Championship",  3,  2),
-    ("14:00", "Grand Chess Championship",    3,  0),
-    ("14:30", "Grand Chess Championship",    5,  0),
-    ("15:00", "Grand Chess Championship",   10, 5),
+    ("00:30", "Grand Chess Championship",     7,  2),
+    ("01:00", "Grand Chess Championship",     3,  2),
+    ("01:30", "Grand Chess Championship",     3,  0),
+    ("02:00", "Grand Chess Championship",     5,  0),
+    ("02:30", "Grand Chess Championship",    10,  5),
+    ("03:00", "Grand Chess Championship",    10,  0),
+    ("03:30", "Grand Chess Championship",     7,  2),
+    ("04:00", "Grand Chess Championship",     3,  2),
+    ("04:30", "Grand Chess Championship",     3,  0),
+    ("05:00", "Grand Chess Championship",     5,  0),
+    ("05:30", "Grand Chess Championship",     3,  1),
+    ("06:00", "Grand Chess Championship",    10,  0),
+    ("06:30", "Grand Chess Championship",     7,  2),
+    ("07:00", "Grand Chess Championship",     3,  2),
+    ("07:30", "Grand Chess Championship",     3,  0),
+    ("08:00", "Grand Chess Championship",     5,  0),
+    ("08:30", "Grand Chess Championship",    10,  5),
+    ("09:00", "Grand Chess Championship",    10,  0),
+    ("09:30", "Grand Chess Championship",     7,  2),
+    ("10:00", "Grand Chess Championship",     3,  2),
+    ("10:30", "Grand Chess Championship",     3,  0),
+    ("11:00", "Grand Chess Championship",     5,  0),
+    ("11:30", "Grand Chess Championship",     3,  0),
+    ("12:00", "Grand Chess Championship",     3,  1),
+    ("12:30", "Grand Chess Championship",    10,  0),
+    ("13:00", "Grand Chess Championship",     7,  2),
+    ("13:30", "Grand Chess Championship",     3,  2),
+    ("14:00", "Grand Chess Championship",     3,  0),
+    ("14:30", "Grand Chess Championship",     5,  0),
+    ("15:00", "Grand Chess Championship",    10,  5),
     ("15:30", "Grand Chess Championship",    10,  0),
     ("16:00", "Grand Chess Championship",     7,  2),
-    ("16:30", "Grand Chess Championship",    3,  2),
-    ("17:00", "Grand Chess Championship",    3,  0),
-    ("17:30", "Grand Chess Championship",  5,  0),
-    ("18:00", "Grand Chess Championship",    3,  1),
-    ("18:30", "Grand Chess Championship",   10,  0),
-    ("19:00", "Grand Chess Championship",    7,  2),
-    ("19:30", "Grand Chess Championship",   3,  2),
-    ("20:00", "Grand Chess Championship",    3,  0),
-    ("20:30", "Grand Chess Championship",    5,  0),
-    ("21:00", "Grand Chess Championship",   10,  5),
-    ("21:30", "Grand Chess Championship",   10,  0),
-    ("22:00", "Grand Chess Championship",    7,  2),
-    ("22:30", "Grand Chess Championship",    3,  2),
-    ("23:00", "Grand Chess Championship",    3,  1),
-    ("23:30", "Grand Chess Championship",    5,  0),
+    ("16:30", "Grand Chess Championship",     3,  2),
+    ("17:00", "Grand Chess Championship",     3,  0),
+    ("17:30", "Grand Chess Championship",     5,  0),
+    ("18:00", "Grand Chess Championship",     3,  1),
+    ("18:30", "Grand Chess Championship",    10,  0),
+    ("19:00", "Grand Chess Championship",     7,  2),
+    ("19:30", "Grand Chess Championship",     3,  2),
+    ("20:00", "Grand Chess Championship",     3,  0),
+    ("20:30", "Grand Chess Championship",     5,  0),
+    ("21:00", "Grand Chess Championship",    10,  5),
+    ("21:30", "Grand Chess Championship",    10,  0),
+    ("22:00", "Grand Chess Championship",     7,  2),
+    ("22:30", "Grand Chess Championship",     3,  2),
+    ("23:00", "Grand Chess Championship",     3,  1),
+    ("23:30", "Grand Chess Championship",     5,  0),
 ]
 
 # ─────────────── Helper ───────────────
@@ -91,19 +90,20 @@ def next_occurrence(time_str: str) -> dt.datetime:
 
 def create_tmt(idx: int, name: str, minutes: int, inc: int, start_utc: dt.datetime) -> None:
     payload = {
-        "name":            f"{name}"[:30],
-        "clock.limit":     minutes * 60,
-        "clock.increment": inc,
-        "startsAt":        start_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "nbRounds":        ROUNDS,
-        "interval":        INTERVAL,
-        "variant":         "standard",
-        "rated":           "true",
-        "description":     LONG_DESC,
+        "name":                    f"{name}"[:30],
+        "clock.limit":             minutes * 60,
+        "clock.increment":         inc,
+        "startsAt":                start_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "nbRounds":                ROUNDS,
+        # No explicit interval -> Lichess chooses automatic
+        "variant":                 "standard",
+        "rated":                   "true",
+        "description":             LONG_DESC,
+        "conditions.playYourGames": "true",  # Enforce must-play condition
     }
     r = requests.post(URL, headers=headers, data=payload, timeout=15)
     if r.status_code == 200:
-        print(f"✅  {payload['name']:<25} →", r.json().get("url"))
+        print(f"✅  {payload['name']:<25} → {r.json().get('url')}")
     else:
         print(f"❌  {payload['name']:<25} ({r.status_code}) {r.text[:120]}")
 
