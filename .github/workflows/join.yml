@@ -1,0 +1,34 @@
+name: Lichess Swiss Auto Join & Withdraw
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+    inputs:
+      team_id:
+        description: "Lichess team ID (default: chess-blasters-2)"
+        required: false
+        default: "chess-blasters-2"
+
+jobs:
+  manage-swiss:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run Swiss join/withdraw
+        env:
+          TEAM_ID: ${{ github.event.inputs.team_id || 'chess-blasters-2' }}
+          LICHESS_KEYS: ${{ secrets.LICHESS_KEY }}
+        run: python -u jw.py
