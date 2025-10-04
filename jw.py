@@ -6,7 +6,11 @@ import requests
 from datetime import datetime, timezone
 
 TEAM_ID = os.environ.get("TEAM_ID", "chess-blasters-2")
-TOKEN = os.environ["LICHESS_KEY"]
+TOKEN = os.environ.get("LICHESS_KEY")
+if not TOKEN:
+    raise ValueError("Environment variable LICHESS_KEY is not set!")
+TOKEN = TOKEN.strip('"')  # remove quotes if present
+
 API_ROOT = "https://lichess.org/api"
 HEADERS = {"Accept": "application/x-ndjson",
            "Authorization": f"Bearer {TOKEN}"}
