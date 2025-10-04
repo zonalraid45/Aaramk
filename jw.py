@@ -10,7 +10,14 @@ headers = {"Authorization": f"Bearer {TOKEN}"}
 def get_team_swisses(team_id):
     r = requests.get(f"{LICHESS_API}/team/{team_id}/swiss", headers=headers)
     r.raise_for_status()
-    return [s for s in r.json() if not s["isFinished"]]
+    # Parse NDJSON (one JSON object per line)
+    swisses = []
+    for line in r.text.strip().split("\n"):
+        if line:
+            s = requests.models.json.loads(line)
+            if not s.get("isFinished", True):
+                swisses.append(s)
+    return swisses
 
 def join_tournament(swiss_id):
     requests.post(f"{LICHESS_API}/swiss/{swiss_id}/join", headers=headers)
