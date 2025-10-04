@@ -1,4 +1,4 @@
-name: Lichess Swiss Auto Join & Withdraw
+name: Abab
 
 on:
   schedule:
@@ -26,7 +26,29 @@ jobs:
 
       - name: Install dependencies
         run: pip install requests
+      - name: Install GitHub CLI        
+        run: |        
+          type -p gh || (curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg &&        
+          sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg &&        
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null &&        
+          sudo apt update && sudo apt install gh -y)        
 
+      - name: Cancel any previous active workflows        
+        run: |        
+          echo "Checking for previous active workflows..."        
+          CURRENT_RUN_ID=${{ github.run_id }}        
+
+          RUNS=$(gh run list --workflow "Abab" --status in_progress --json databaseId --jq ".[].databaseId" | grep -v "^$" | grep -v "$CURRENT_RUN_ID" || true)        
+
+          if [ -n "$RUNS" ]; then        
+            echo "Found previous active workflow(s): $RUNS"        
+            for RUN_ID in $RUNS; do        
+              echo "Cancelling workflow $RUN_ID..."        
+              gh run cancel "$RUN_ID"        
+            done        
+          else        
+            echo "No previous active workflows found."        
+          fi        
       - name: Run Swiss join/withdraw
         env:
           TEAM_ID: ${{ github.event.inputs.team_id || 'chess-blasters-2' }}
