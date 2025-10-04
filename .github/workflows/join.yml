@@ -2,7 +2,7 @@ name: Lichess Swiss Auto Join & Withdraw
 
 on:
   schedule:
-    - cron: "0 * * * *"
+    - cron: "0 * * * *" 
   workflow_dispatch:
     inputs:
       team_id:
@@ -13,7 +13,7 @@ on:
 jobs:
   manage-swiss:
     runs-on: ubuntu-latest
-    timeout-minutes: 300
+    timeout-minutes: 300  
 
     steps:
       - name: Checkout repository
@@ -30,5 +30,5 @@ jobs:
       - name: Run Swiss join/withdraw
         env:
           TEAM_ID: ${{ github.event.inputs.team_id || 'chess-blasters-2' }}
-          LICHESS_KEYS: ${{ secrets.LICHESS_KEY }}
+          LICHESS_KEY: ${{ secrets.LICHESS_KEY }}
         run: python -u jw.py
