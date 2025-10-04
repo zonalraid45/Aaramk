@@ -2,13 +2,17 @@ name: Abab
 
 on:
   schedule:
-    - cron: "0 * * * *" 
+    - cron: "0 * * * *"  # runs hourly
   workflow_dispatch:
     inputs:
       team_id:
         description: "Lichess team ID (default: chess-blasters-2)"
         required: false
         default: "chess-blasters-2"
+
+permissions:
+  actions: write
+  contents: read
 
 jobs:
   manage-swiss:
@@ -17,7 +21,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -26,33 +30,46 @@ jobs:
 
       - name: Install dependencies
         run: pip install requests
-      - name: Install GitHub CLI        
-        run: |        
-          type -p gh || (curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg &&        
-          sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg &&        
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null &&        
-          sudo apt update && sudo apt install gh -y)        
 
-      - name: Cancel any previous active workflows        
-        env:  
+      - name: Install GitHub CLI
+        run: |
+          if ! command -v gh &>/dev/null; then
+            echo "Installing GitHub CLI..."
+            sudo apt-get update -y
+            sudo apt-get install -y gh
+          else
+            echo "GitHub CLI already installed."
+          fi
+
+      - name: Cancel any previous active workflows
+        env:
           GH_TOKEN: ${{ github.token }}
-        run: |        
-          echo "Checking for previous active workflows..."        
-          CURRENT_RUN_ID=${{ github.run_id }}        
+        run: |
+          echo "──────────────────────────────"
+          echo "Checking for previous active workflows..."
+          CURRENT_RUN_ID=${{ github.run_id }}
 
-          RUNS=$(gh run list --workflow "Abab" --status in_progress --json databaseId --jq ".[].databaseId" | grep -v "^$" | grep -v "$CURRENT_RUN_ID" || true)        
+          RUNS=$(gh run list --workflow "Abab" --status in_progress --json databaseId --jq ".[].databaseId" | grep -v "^$" | grep -v "$CURRENT_RUN_ID" || true)
 
-          if [ -n "$RUNS" ]; then        
-            echo "Found previous active workflow(s): $RUNS"        
-            for RUN_ID in $RUNS; do        
-              echo "Cancelling workflow $RUN_ID..."        
-              gh run cancel "$RUN_ID"        
-            done        
-          else        
-            echo "No previous active workflows found."        
-          fi        
-      - name: Run Swiss join/withdraw
+          if [ -n "$RUNS" ]; then
+            echo "Found previous active workflow(s):"
+            echo "$RUNS"
+            for RUN_ID in $RUNS; do
+              echo "Cancelling workflow $RUN_ID..."
+              gh run cancel "$RUN_ID" || echo "⚠️ Failed to cancel $RUN_ID (may be permission or timing issue)"
+            done
+          else
+            echo "No previous active workflows found."
+          fi
+          echo "──────────────────────────────"
+
+      - name: Run Swiss join/withdraw script
         env:
           TEAM_ID: ${{ github.event.inputs.team_id || 'chess-blasters-2' }}
           LICHESS_KEY: ${{ secrets.LICHESS_KEYS }}
-        run: python -u jw.py
+        run: |
+          echo "──────────────────────────────"
+          echo "Running Swiss join/withdraw script..."
+          python3 -u jw.py
+          echo "──────────────────────────────"
+          echo "✅ Script finished successfully."
