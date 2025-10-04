@@ -2,7 +2,6 @@
 import os
 import time
 import json
-import logging
 import requests
 from datetime import datetime, timezone
 
@@ -19,16 +18,10 @@ HEADERS = {
     "Authorization": f"Bearer {TOKEN}"
 }
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s"
-)
-
 # ────────────────── Helpers ────────────────── #
 def get_upcoming_swiss(team_id):
     """Fetch upcoming Swiss tournaments for the team."""
     url = f"{API_ROOT}/team/{team_id}/swiss"
-    logging.info(f"Fetching upcoming Swiss tournaments for team: {team_id}")
     res = requests.get(url, headers=HEADERS, timeout=15)
     res.raise_for_status()
 
@@ -61,9 +54,11 @@ def get_upcoming_swiss(team_id):
             obj["_startsMs"] = start_epoch
             swisses.append(obj)
 
-    logging.info(f"Found {len(swisses)} upcoming Swiss tournaments.")
+    # Print tournament list with start time
+    print(f"Found {len(swisses)} upcoming Swiss tournaments:")
     for s in swisses:
-        logging.info(f"- {s['id']} starts at {datetime.utcfromtimestamp(s['_startsMs']/1000).strftime('%Y-%m-%d %H:%M:%S UTC')}")
+        start_time = datetime.utcfromtimestamp(s["_startsMs"]/1000)
+        print(f"- {s['id']} | Starts at: {start_time.strftime('%Y-%m-%d %H:%M:%S UTC')}")
 
     return sorted(swisses, key=lambda s: s["_startsMs"])
 
@@ -73,42 +68,37 @@ def withdraw(swiss_id):
     try:
         res = requests.post(f"{API_ROOT}/swiss/{swiss_id}/withdraw", headers=HEADERS, timeout=15)
         if res.status_code == 200:
-            logging.info(f"🟡 Withdrawn from Swiss: {swiss_id}")
+            print(f"Withdraw successfully from Swiss: {swiss_id}")
         elif res.status_code == 400 and "not joined" in res.text:
-            logging.info(f"ℹ️ Already withdrawn or not joined: {swiss_id}")
+            print(f"Already withdrawn or not joined: {swiss_id}")
         else:
-            logging.warning(f"⚠️ Failed to withdraw {swiss_id} | Status {res.status_code} | {res.text.strip()[:100]}")
+            print(f"Failed to withdraw {swiss_id} | Status {res.status_code}")
     except requests.RequestException as e:
-        logging.error(f"Withdraw request failed for {swiss_id}: {e}")
+        print(f"Withdraw request failed for {swiss_id}: {e}")
 
 
 # ────────────────── Main ────────────────── #
 def main():
-    logging.info("Starting Swiss withdrawal automation...")
     swisses = get_upcoming_swiss(TEAM_ID)
     now_ms = int(time.time() * 1000)
 
     if not swisses:
-        logging.info("No upcoming Swiss tournaments found. Exiting.")
+        print("No upcoming Swiss tournaments found. Exiting.")
         return
 
     # Withdraw 3 minutes before each Swiss
     for s in swisses:
         swiss_id = s["id"]
         start_ms = s["_startsMs"]
-        withdraw_time = datetime.utcfromtimestamp((start_ms - 3 * 60 * 1000) / 1000)
         sleep_sec = max((start_ms - now_ms) / 1000 - 3 * 60, 0)
 
-        logging.info(f"Scheduled withdrawal for {swiss_id} at {withdraw_time.strftime('%Y-%m-%d %H:%M:%S UTC')} "
-                     f"(in {int(sleep_sec)} seconds).")
+        print(f"Will withdraw from {swiss_id} in {int(sleep_sec)} seconds.")
 
         if sleep_sec > 0:
             time.sleep(sleep_sec)
 
         withdraw(swiss_id)
         now_ms = int(time.time() * 1000)
-
-    logging.info("Withdrawal automation completed successfully.")
 
 
 if __name__ == "__main__":
