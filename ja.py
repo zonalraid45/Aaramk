@@ -2,6 +2,7 @@
 """
 Auto-join every *up-coming* Swiss tournament created by the Chess-Blasters-2 team.
 Uses a single Lichess token stored in the LICHESS_KEY environment variable.
+Handles tokens that may include quotes.
 """
 
 import os
@@ -80,6 +81,8 @@ def main():
     if not token:
         logging.error("No LICHESS_KEY found — nothing to do.")
         return
+
+    token = token.strip('"')  # automatically remove surrounding quotes
 
     swiss_events = get_upcoming_swiss(token)
     if not swiss_events:
