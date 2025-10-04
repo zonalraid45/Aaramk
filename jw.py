@@ -2,6 +2,7 @@
 import os
 import time
 import json
+import logging
 import requests
 from datetime import datetime, timezone
 
@@ -9,11 +10,13 @@ TEAM_ID = os.environ.get("TEAM_ID", "chess-blasters-2")
 TOKEN = os.environ.get("LICHESS_KEY")
 if not TOKEN:
     raise ValueError("Environment variable LICHESS_KEY is not set!")
-TOKEN = TOKEN.strip('"')  # remove quotes if present
+TOKEN = TOKEN.strip('"')
 
 API_ROOT = "https://lichess.org/api"
 HEADERS = {"Accept": "application/x-ndjson",
            "Authorization": f"Bearer {TOKEN}"}
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(message)s")
 
 
 def get_upcoming_swiss(team_id):
@@ -41,15 +44,17 @@ def get_upcoming_swiss(team_id):
         if start_epoch > now_ms:
             obj["_startsMs"] = start_epoch
             swisses.append(obj)
-    return swisses
+    return sorted(swisses, key=lambda s: s["_startsMs"])
 
 
 def join(swiss_id):
     requests.post(f"{API_ROOT}/swiss/{swiss_id}/join", headers=HEADERS, timeout=15)
+    logging.info(f"Joined Swiss: {swiss_id}")
 
 
 def withdraw(swiss_id):
     requests.post(f"{API_ROOT}/swiss/{swiss_id}/withdraw", headers=HEADERS, timeout=15)
+    logging.info(f"Withdrawn from Swiss: {swiss_id}")
 
 
 def main():
@@ -58,13 +63,16 @@ def main():
 
     for s in swisses:
         swiss_id = s["id"]
-        start_ms = s["_startsMs"]
-        mins_to_start = (start_ms - now_ms) / 1000 / 60
+        join(swiss_id)
 
-        if mins_to_start > 8:
-            join(swiss_id)
-        elif 0 < mins_to_start <= 8:
-            withdraw(swiss_id)
+    for s in swisses:
+        swiss_id = s["id"]
+        start_ms = s["_startsMs"]
+        sleep_sec = max((start_ms - now_ms) / 1000 - 8 * 60, 0)
+        if sleep_sec > 0:
+            time.sleep(sleep_sec)
+        withdraw(swiss_id)
+        now_ms = int(time.time() * 1000)
 
 
 if __name__ == "__main__":
