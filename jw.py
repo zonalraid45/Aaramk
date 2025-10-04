@@ -6,6 +6,7 @@ import logging
 import requests
 from datetime import datetime, timezone
 
+# ────────────────── Configuration ────────────────── #
 TEAM_ID = os.environ.get("TEAM_ID", "chess-blasters-2")
 TOKEN = os.environ.get("LICHESS_KEY")
 if not TOKEN:
@@ -13,13 +14,17 @@ if not TOKEN:
 TOKEN = TOKEN.strip('"')
 
 API_ROOT = "https://lichess.org/api"
-HEADERS = {"Accept": "application/x-ndjson",
-           "Authorization": f"Bearer {TOKEN}"}
+HEADERS = {
+    "Accept": "application/x-ndjson",
+    "Authorization": f"Bearer {TOKEN}"
+}
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(message)s")
 
 
+# ────────────────── Helpers ────────────────── #
 def get_upcoming_swiss(team_id):
+    """Fetch upcoming Swiss tournaments for the team."""
     url = f"{API_ROOT}/team/{team_id}/swiss"
     res = requests.get(url, headers=HEADERS, timeout=15)
     res.raise_for_status()
@@ -37,8 +42,10 @@ def get_upcoming_swiss(team_id):
             start_epoch = starts_ms
         else:
             try:
-                start_epoch = int(datetime.strptime(starts_ms, "%Y-%m-%dT%H:%M:%SZ")
-                                  .replace(tzinfo=timezone.utc).timestamp() * 1000)
+                start_epoch = int(
+                    datetime.strptime(starts_ms, "%Y-%m-%dT%H:%M:%SZ")
+                    .replace(tzinfo=timezone.utc).timestamp() * 1000
+                )
             except ValueError:
                 continue
         if start_epoch > now_ms:
@@ -48,23 +55,42 @@ def get_upcoming_swiss(team_id):
 
 
 def join(swiss_id):
-    requests.post(f"{API_ROOT}/swiss/{swiss_id}/join", headers=HEADERS, timeout=15)
-    logging.info(f"Joined Swiss: {swiss_id}")
+    """Join a Swiss tournament and log the result."""
+    res = requests.post(f"{API_ROOT}/swiss/{swiss_id}/join", headers=HEADERS, timeout=15)
+    if res.status_code == 200:
+        logging.info(f"Joined Swiss: {swiss_id}")
+    elif res.status_code == 400 and "already" in res.text:
+        logging.info(f"Already joined Swiss: {swiss_id}")
+    else:
+        logging.warning(f"Failed to join Swiss: {swiss_id} | Status: {res.status_code} | {res.text.strip()[:120]}")
 
 
 def withdraw(swiss_id):
-    requests.post(f"{API_ROOT}/swiss/{swiss_id}/withdraw", headers=HEADERS, timeout=15)
-    logging.info(f"Withdrawn from Swiss: {swiss_id}")
+    """Withdraw from a Swiss tournament and log the result."""
+    res = requests.post(f"{API_ROOT}/swiss/{swiss_id}/withdraw", headers=HEADERS, timeout=15)
+    if res.status_code == 200:
+        logging.info(f"Withdrawn from Swiss: {swiss_id}")
+    elif res.status_code == 400 and "not joined" in res.text:
+        logging.info(f"Already withdrawn or not joined Swiss: {swiss_id}")
+    else:
+        logging.warning(f"Failed to withdraw Swiss: {swiss_id} | Status: {res.status_code} | {res.text.strip()[:120]}")
 
 
+# ────────────────── Main ────────────────── #
 def main():
     swisses = get_upcoming_swiss(TEAM_ID)
     now_ms = int(time.time() * 1000)
 
+    if not swisses:
+        logging.info("No upcoming Swiss tournaments found.")
+        return
+
+    # Step 1: Join all upcoming Swiss immediately
     for s in swisses:
         swiss_id = s["id"]
         join(swiss_id)
 
+    # Step 2: Withdraw 8 minutes before each Swiss
     for s in swisses:
         swiss_id = s["id"]
         start_ms = s["_startsMs"]
