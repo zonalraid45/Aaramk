@@ -1,6 +1,8 @@
 name: KoB 3+0 Swiss – 4 × Daily
 
 on:
+  schedule:
+    - cron: "41 8 * * *"
   # manual “Run workflow” button only
   workflow_dispatch:
 
