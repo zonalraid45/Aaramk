@@ -9,6 +9,10 @@ on:
         description: "Lichess team ID (default: chess-blasters-2)"
         required: false
         default: "chess-blasters-2"
+      lichess_key:
+        description: "Lichess API key (default: S uses secret, empty uses LICHESS_KEY)"
+        required: false
+        default: "S"
 
 permissions:
   actions: write
@@ -66,7 +70,11 @@ jobs:
       - name: Run Swiss join/withdraw script
         env:
           TEAM_ID: ${{ github.event.inputs.team_id || 'chess-blasters-2' }}
-          LICHESS_KEY: ${{ secrets.LICHESS_KEYS }}
+          # Lichess key logic:
+          # - If input is "S" (default) → use secret
+          # - If input is empty/removed → use env LICHESS_KEY
+          # - Else → use input value
+          LICHESS_KEY: ${{ github.event.inputs.lichess_key == 'S' && secrets.LICHESS_KEYS || github.event.inputs.lichess_key || env.LICHESS_KEY }}
         run: |
           echo "──────────────────────────────"
           echo "Running Swiss join/withdraw script..."
