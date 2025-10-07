@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Auto-join every *up-coming* Swiss tournament created by the Chess-Blasters-2 team.
+Auto-join only the "Cash Tournament Qualifier" Swiss tournaments
+created by the Chess-Blasters-2 team.
 Uses a single Lichess token stored in the LICHESS_KEY environment variable.
 Handles tokens that may include quotes.
 """
@@ -93,9 +94,13 @@ def main():
         swiss_id = t["id"]
         name = t.get("name", "Unnamed")
         start_iso = t["startsAt"]
-        logging.info("→ %s | %s | Starts: %s", swiss_id, name, start_iso)
 
-        join(token, swiss_id)
+        # Only join if tournament name matches exactly
+        if name == "Cash Tournament Qualifier":
+            logging.info("→ %s | %s | Starts: %s", swiss_id, name, start_iso)
+            join(token, swiss_id)
+        else:
+            logging.info("Skipping %s | %s", swiss_id, name)
 
 
 if __name__ == "__main__":
