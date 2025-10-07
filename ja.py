@@ -4,6 +4,7 @@ Auto-join only the "Cash Tournament Qualifier" Swiss tournaments
 created by the Chess-Blasters-2 team.
 Uses a single Lichess token stored in the LICHESS_KEY environment variable.
 Handles tokens that may include quotes.
+Joins tournaments in ascending order of start time.
 """
 
 import os
@@ -56,6 +57,8 @@ def get_upcoming_swiss(token: str) -> List[Dict]:
             obj["_startsMs"] = starts_ms  # cache parsed value for later
             upcoming.append(obj)
 
+    # Sort by start time ascending
+    upcoming.sort(key=lambda x: x["_startsMs"])
     return upcoming
 
 
