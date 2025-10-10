@@ -101,7 +101,7 @@ def main():
         for s in swisses:
             swiss_id = s["id"]
             start_ms = s["_startsMs"]
-            sleep_sec = max((start_ms - now_ms) / 1000 - 1 * 60, 0)
+            sleep_sec = max((start_ms - now_ms) / 1000 - 3 * 60, 0)
 
             print(f"Will withdraw from {swiss_id} in {int(sleep_sec)} seconds.")
             if sleep_sec > 0:
