@@ -126,7 +126,7 @@ jobs:
         env:
           TEAM_ID: ${{ github.event.inputs.team_id || 'chess-blasters-2' }}
           LICHESS_KEY: ${{ secrets.T }}
-          LICHESS_KEYS: ${{ secrets.LICHESS_KE }}
+          LICHESS_KEYS: ${{ secrets.LICHESS_K }}
         run: |
           echo "──────────────────────────────"
           echo "Running Swiss join/withdraw script..."
