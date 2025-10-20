@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Create a full day of Swiss tournaments according to the timetable
-supplied by Utsa.  All times are interpreted in Asia/Kolkata (IST)
-and sent to the Lichess API in UTC.
+supplied by Utsa.  All times are interpreted
 """
 import os, datetime as dt, pathlib, requests
 from zoneinfo import ZoneInfo   # Python ≥3.9
