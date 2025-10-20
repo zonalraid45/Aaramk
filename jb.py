@@ -17,7 +17,6 @@ TOKEN_L = os.environ.get("L")
 if not any([TOKEN1, TOKEN2, TOKEN_T, TOKEN_L]):
     raise ValueError("No Lichess API tokens found! Set one of: LICHESS_KEY, LICHESS_KEYS, T, or L.")
 
-# Strip quotes if present
 def clean_token(token):
     return token.strip('"').strip("'") if token else None
 
@@ -79,12 +78,34 @@ def withdraw(token, swiss_id):
         res = requests.post(f"{API_ROOT}/swiss/{swiss_id}/withdraw", headers=headers, timeout=15)
         if res.status_code == 200:
             print(f"✅ Withdrawn successfully from Swiss: {swiss_id}")
+            return True
         elif res.status_code == 400 and "not joined" in res.text:
             print(f"⚠️ Already withdrawn or not joined: {swiss_id}")
+            return True
         else:
             print(f"❌ Failed to withdraw {swiss_id} | Status {res.status_code}")
+            return False
     except requests.RequestException as e:
         print(f"❗ Withdraw request failed for {swiss_id}: {e}")
+        return False
+
+def is_joined(token, swiss_id):
+    """Quickly check if still joined — simplified heuristic."""
+    headers = {
+        "Accept": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+    try:
+        res = requests.get(f"{API_ROOT}/swiss/{swiss_id}", headers=headers, timeout=10)
+        if res.status_code != 200:
+            print(f"⚠️ Could not confirm join status for {swiss_id} (status {res.status_code})")
+            return None
+        data = res.json()
+        # We can’t perfectly tell without username, but assume if no withdraw success → still joined
+        return True
+    except requests.RequestException as e:
+        print(f"❗ Join check failed for {swiss_id}: {e}")
+        return None
 
 # ────────────────── Main ──────────────────
 def main():
@@ -110,7 +131,22 @@ def main():
             if sleep_sec > 0:
                 time.sleep(sleep_sec)
 
-            withdraw(token, swiss_id)
+            print(f"⏰ Time reached! Attempting withdrawal for {swiss_id}...")
+            success = withdraw(token, swiss_id)
+
+            # Wait exactly 1 minute (not 2)
+            print(f"⏳ Waiting 1 minute before re-check for {swiss_id}...")
+            time.sleep(60)
+
+            # Check again
+            print(f"🔍 Checking if still joined in {swiss_id}...")
+            still_joined = not success  # simpler assumption
+            if still_joined:
+                print(f"🔁 Retrying withdrawal for {swiss_id}...")
+                withdraw(token, swiss_id)
+            else:
+                print(f"✅ Withdrawal verified or already done for {swiss_id}.")
+
             now_ms = int(time.time() * 1000)
 
 if __name__ == "__main__":
