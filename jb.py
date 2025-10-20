@@ -5,44 +5,44 @@ import json
 import requests
 from datetime import datetime, timezone
 
+# ────────────────── CONFIG ──────────────────
 TEAM_ID = os.environ.get("TEAM_ID", "chess-blasters-2")
 
-# ───────────── Tokens ─────────────
-TOKEN1 = os.environ.get("LICHESS_KEY")
-TOKEN2 = os.environ.get("LICHESS_KEYS")
-TOKEN_T = os.environ.get("T")
-TOKEN_L = os.environ.get("L")
+TOKEN_NAMES = ["LICHESS_KEY", "LICHESS_KEYS", "T", "L"]
+TOKENS = []
+for name in TOKEN_NAMES:
+    val = os.environ.get(name)
+    if val:
+        TOKENS.append(val.strip('"').strip("'"))
 
-TOKENS = [t.strip('"').strip("'") for t in [TOKEN1, TOKEN2, TOKEN_T, TOKEN_L] if t]
 if not TOKENS:
-    raise ValueError("No tokens found (LICHESS_KEY, LICHESS_KEYS, T, L)")
+    raise SystemExit("❌ No tokens found! Please export LICHESS_KEY, LICHESS_KEYS, T, or L")
 
 API_ROOT = "https://lichess.org/api"
 
-# ───────────── Helpers ─────────────
+# ────────────────── HELPERS ──────────────────
+def now_ms():
+    return int(time.time() * 1000)
+
 def get_username(token):
     try:
-        res = requests.get(f"{API_ROOT}/account",
-                           headers={"Authorization": f"Bearer {token}"}, timeout=10)
-        if res.status_code == 200:
-            return res.json().get("username", "UnknownUser")
-    except Exception:
-        pass
-    return "UnknownUser"
+        r = requests.get(f"{API_ROOT}/account", headers={"Authorization": f"Bearer {token}"}, timeout=10)
+        if r.status_code == 200:
+            return r.json().get("username")
+        else:
+            print(f"[{token[:8]}] account fetch failed ({r.status_code}): {r.text}")
+    except Exception as e:
+        print(f"[{token[:8]}] account fetch error: {e}")
+    return None
 
-def get_team_swisses(token):
-    """Return list of future swisses for the team."""
-    try:
-        r = requests.get(f"{API_ROOT}/team/{TEAM_ID}/swiss",
-                         headers={"Accept": "application/x-ndjson",
-                                  "Authorization": f"Bearer {token}"}, timeout=15)
-        r.raise_for_status()
-    except Exception:
-        return []
+def get_upcoming_swisses(token, team_id):
+    headers = {"Accept": "application/x-ndjson", "Authorization": f"Bearer {token}"}
+    res = requests.get(f"{API_ROOT}/team/{team_id}/swiss", headers=headers, timeout=15)
+    res.raise_for_status()
 
-    now = int(time.time() * 1000)
-    items = []
-    for line in r.iter_lines(decode_unicode=True):
+    swisses = []
+    now = now_ms()
+    for line in res.iter_lines(decode_unicode=True):
         if not line:
             continue
         try:
@@ -52,67 +52,81 @@ def get_team_swisses(token):
         starts = obj.get("startsAt")
         if not starts:
             continue
-        if not isinstance(starts, int):
-            try:
-                starts = int(datetime.strptime(starts, "%Y-%m-%dT%H:%M:%SZ")
-                             .replace(tzinfo=timezone.utc).timestamp() * 1000)
-            except ValueError:
-                continue
-        if starts > now:
-            obj["_startsMs"] = starts
-            items.append(obj)
-    return sorted(items, key=lambda x: x["_startsMs"])
+        try:
+            start_ms = int(
+                datetime.strptime(starts, "%Y-%m-%dT%H:%M:%SZ")
+                .replace(tzinfo=timezone.utc)
+                .timestamp() * 1000
+            )
+        except Exception:
+            continue
+        if start_ms > now:
+            obj["_startsMs"] = start_ms
+            swisses.append(obj)
+    return sorted(swisses, key=lambda s: s["_startsMs"])
 
-def withdraw(token, swiss_id):
-    """Try to withdraw; return True if done or already withdrawn."""
+def withdraw(token, swiss_id, username):
+    headers = {"Authorization": f"Bearer {token}"}
     try:
-        r = requests.post(f"{API_ROOT}/swiss/{swiss_id}/withdraw",
-                          headers={"Authorization": f"Bearer {token}"}, timeout=10)
+        r = requests.post(f"{API_ROOT}/swiss/{swiss_id}/withdraw", headers=headers, timeout=15)
         if r.status_code == 200:
-            print(f"✅  Withdraw OK  {swiss_id}")
-            return True
-        if r.status_code == 400 and "not joined" in r.text:
-            print(f"⚠️  Already withdrawn  {swiss_id}")
-            return True
-        print(f"❌  Withdraw fail {swiss_id}: {r.status_code} {r.text[:80]}")
+            print(f"✅ [{username}] Withdraw OK {swiss_id}")
+        elif "not joined" in r.text.lower():
+            print(f"ℹ️ [{username}] Already not joined {swiss_id}")
+        else:
+            print(f"⚠️ [{username}] Withdraw failed {swiss_id} ({r.status_code}): {r.text}")
     except Exception as e:
-        print(f"❗ Withdraw error {swiss_id}: {e}")
-    return False
+        print(f"❌ [{username}] Withdraw error {swiss_id}: {e}")
 
-# ───────────── Main Loop ─────────────
-def main():
-    usernames = {t: get_username(t) for t in TOKENS}
-    print("🚀 Running Swiss auto-withdraw bot (always active)\n")
-    handled = {}   # swiss_id -> {"time": last_attempt_ms, "retried": bool}
+# ────────────────── MAIN ──────────────────
+print("──────────────────────────────")
+print("🚀 Running Swiss auto-withdraw bot (always active)\n")
 
-    while True:
-        now = int(time.time() * 1000)
-        for token in TOKENS:
-            uname = usernames[token]
-            swisses = get_team_swisses(token)
-            if not swisses:
-                continue
-            for s in swisses:
-                sid = s["id"]
-                start = s["_startsMs"]
-                mins_left = (start - now) / 60000.0
+# Load usernames for all tokens
+usernames = {}
+for t in TOKENS:
+    u = get_username(t)
+    if u:
+        usernames[t] = u
 
-                if mins_left <= 0:
-                    continue  # started already
-                # T−3: withdraw; T−2: retry once
-                if 2.9 <= mins_left <= 3.1 and sid not in handled:
-                    print(f"[{uname}] Withdrawing from {sid} (starts in {mins_left:.2f} m)")
-                    ok = withdraw(token, sid)
-                    handled[sid] = {"time": now, "retried": False, "ok": ok}
+if not usernames:
+    raise SystemExit("❌ No valid usernames fetched from tokens.")
 
-                elif 1.9 <= mins_left <= 2.1 and sid in handled and not handled[sid]["retried"]:
-                    if not handled[sid]["ok"]:
-                        print(f"[{uname}] Retry withdrawal for {sid} (starts in {mins_left:.2f} m)")
-                        withdraw(token, sid)
-                    handled[sid]["retried"] = True
+print("Loaded accounts:")
+for name in usernames.values():
+    print("  -", name)
 
-        # short pause just to avoid hammering API too hard
-        time.sleep(5)
+print("\nBot active. Monitoring upcoming Swiss tournaments...\n")
 
-if __name__ == "__main__":
-    main()
+# ────────────────── LOOP ──────────────────
+while True:
+    for token, uname in usernames.items():
+        try:
+            swisses = get_upcoming_swisses(token, TEAM_ID)
+        except Exception as e:
+            print(f"[{uname}] ❌ Failed to fetch Swiss list: {e}")
+            continue
+
+        now = now_ms()
+        if not swisses:
+            continue
+
+        for s in swisses:
+            sid = s["id"]
+            start = s["_startsMs"]
+            mins_left = (start - now) / 60000
+
+            # Withdraw one account at a time
+            if 2.5 <= mins_left <= 3.5:
+                print(f"[{uname}] Withdrawing from {sid} (starts in {mins_left:.2f} min)")
+                withdraw(token, sid, uname)
+
+            elif 1.5 <= mins_left <= 2.5:
+                print(f"[{uname}] Retrying withdraw {sid} (starts in {mins_left:.2f} min)")
+                withdraw(token, sid, uname)
+
+        # brief pause between accounts to avoid API spam
+        time.sleep(3)
+
+    # active continuous checking
+    time.sleep(15)
