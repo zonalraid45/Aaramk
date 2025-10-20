@@ -8,21 +8,20 @@ from datetime import datetime, timezone
 # ────────────────── Configuration ──────────────────
 TEAM_ID = os.environ.get("TEAM_ID", "chess-blasters-2")
 
-# Fetch both keys
+# Fetch all possible token sources
 TOKEN1 = os.environ.get("LICHESS_KEY")
 TOKEN2 = os.environ.get("LICHESS_KEYS")
+TOKEN_T = os.environ.get("T")
+TOKEN_L = os.environ.get("L")
 
-if not TOKEN1 and not TOKEN2:
-    raise ValueError("Environment variable LICHESS_KEY and LICHESS_KEYS are both not set!")
+if not any([TOKEN1, TOKEN2, TOKEN_T, TOKEN_L]):
+    raise ValueError("No Lichess API tokens found! Set one of: LICHESS_KEY, LICHESS_KEYS, T, or L.")
 
 # Strip quotes if present
-if TOKEN1:
-    TOKEN1 = TOKEN1.strip('"')
-if TOKEN2:
-    TOKEN2 = TOKEN2.strip('"')
+def clean_token(token):
+    return token.strip('"').strip("'") if token else None
 
-# Make a list of tokens to use
-TOKENS = [t for t in [TOKEN1, TOKEN2] if t]
+TOKENS = [clean_token(t) for t in [TOKEN1, TOKEN2, TOKEN_T, TOKEN_L] if t]
 
 API_ROOT = "https://lichess.org/api"
 
@@ -79,21 +78,25 @@ def withdraw(token, swiss_id):
     try:
         res = requests.post(f"{API_ROOT}/swiss/{swiss_id}/withdraw", headers=headers, timeout=15)
         if res.status_code == 200:
-            print(f"Withdraw successfully from Swiss: {swiss_id}")
+            print(f"✅ Withdrawn successfully from Swiss: {swiss_id}")
         elif res.status_code == 400 and "not joined" in res.text:
-            print(f"Already withdrawn or not joined: {swiss_id}")
+            print(f"⚠️ Already withdrawn or not joined: {swiss_id}")
         else:
-            print(f"Failed to withdraw {swiss_id} | Status {res.status_code}")
+            print(f"❌ Failed to withdraw {swiss_id} | Status {res.status_code}")
     except requests.RequestException as e:
-        print(f"Withdraw request failed for {swiss_id}: {e}")
+        print(f"❗ Withdraw request failed for {swiss_id}: {e}")
 
 # ────────────────── Main ──────────────────
 def main():
     for token in TOKENS:
         print(f"\n=== Using token: {token[:8]}*** ===")
-        swisses = get_upcoming_swiss(token, TEAM_ID)
-        now_ms = int(time.time() * 1000)
+        try:
+            swisses = get_upcoming_swiss(token, TEAM_ID)
+        except requests.RequestException as e:
+            print(f"Failed to fetch Swiss list with token {token[:8]}***: {e}")
+            continue
 
+        now_ms = int(time.time() * 1000)
         if not swisses:
             print("No upcoming Swiss tournaments found. Skipping this token.")
             continue
