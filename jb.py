@@ -5,39 +5,44 @@ import json
 import requests
 from datetime import datetime, timezone
 
-# ────────────────── Configuration ──────────────────
 TEAM_ID = os.environ.get("TEAM_ID", "chess-blasters-2")
 
-# Fetch all possible token sources
+# ────────────────── Tokens ──────────────────
 TOKEN1 = os.environ.get("LICHESS_KEY")
 TOKEN2 = os.environ.get("LICHESS_KEYS")
 TOKEN_T = os.environ.get("T")
 TOKEN_L = os.environ.get("L")
 
-if not any([TOKEN1, TOKEN2, TOKEN_T, TOKEN_L]):
-    raise ValueError("No Lichess API tokens found! Set one of: LICHESS_KEY, LICHESS_KEYS, T, or L.")
-
-def clean_token(token):
-    return token.strip('"').strip("'") if token else None
-
-TOKENS = [clean_token(t) for t in [TOKEN1, TOKEN2, TOKEN_T, TOKEN_L] if t]
+TOKENS = [t.strip('"').strip("'") for t in [TOKEN1, TOKEN2, TOKEN_T, TOKEN_L] if t]
+if not TOKENS:
+    raise ValueError("No tokens found (LICHESS_KEY, LICHESS_KEYS, T, L)")
 
 API_ROOT = "https://lichess.org/api"
 
 # ────────────────── Helpers ──────────────────
+def get_account_name(token):
+    """Get Lichess username for this token."""
+    headers = {"Authorization": f"Bearer {token}"}
+    try:
+        res = requests.get(f"{API_ROOT}/account", headers=headers, timeout=10)
+        if res.status_code == 200:
+            return res.json().get("username", "UnknownUser")
+    except Exception:
+        pass
+    return "UnknownUser"
+
 def get_upcoming_swiss(token, team_id):
-    """Fetch upcoming Swiss tournaments for the team using a specific token."""
-    headers = {
-        "Accept": "application/x-ndjson",
-        "Authorization": f"Bearer {token}"
-    }
+    """Fetch upcoming Swiss tournaments for the team."""
+    headers = {"Accept": "application/x-ndjson", "Authorization": f"Bearer {token}"}
     url = f"{API_ROOT}/team/{team_id}/swiss"
-    res = requests.get(url, headers=headers, timeout=15)
-    res.raise_for_status()
+    try:
+        res = requests.get(url, headers=headers, timeout=15)
+        res.raise_for_status()
+    except requests.RequestException:
+        return []
 
-    swisses = []
     now_ms = int(time.time() * 1000)
-
+    swisses = []
     for line in res.iter_lines(decode_unicode=True):
         if not line:
             continue
@@ -45,109 +50,84 @@ def get_upcoming_swiss(token, team_id):
             obj = json.loads(line)
         except json.JSONDecodeError:
             continue
-
         starts_ms = obj.get("startsAt")
         if not starts_ms:
             continue
-
-        if isinstance(starts_ms, int):
-            start_epoch = starts_ms
-        else:
+        if not isinstance(starts_ms, int):
             try:
-                start_epoch = int(
-                    datetime.strptime(starts_ms, "%Y-%m-%dT%H:%M:%SZ")
-                    .replace(tzinfo=timezone.utc)
-                    .timestamp() * 1000
-                )
+                starts_ms = int(datetime.strptime(starts_ms, "%Y-%m-%dT%H:%M:%SZ")
+                                .replace(tzinfo=timezone.utc).timestamp() * 1000)
             except ValueError:
                 continue
-
-        if start_epoch > now_ms:
-            obj["_startsMs"] = start_epoch
+        if starts_ms > now_ms:
+            obj["_startsMs"] = starts_ms
             swisses.append(obj)
-
     return sorted(swisses, key=lambda s: s["_startsMs"])
 
 def withdraw(token, swiss_id):
-    """Withdraw from a Swiss tournament using a specific token."""
-    headers = {
-        "Accept": "application/x-ndjson",
-        "Authorization": f"Bearer {token}"
-    }
+    """Withdraw from a Swiss tournament."""
+    headers = {"Accept": "application/x-ndjson", "Authorization": f"Bearer {token}"}
     try:
         res = requests.post(f"{API_ROOT}/swiss/{swiss_id}/withdraw", headers=headers, timeout=15)
         if res.status_code == 200:
-            print(f"✅ Withdrawn successfully from Swiss: {swiss_id}")
+            print(f"✅ Withdrawn successfully from {swiss_id}")
             return True
         elif res.status_code == 400 and "not joined" in res.text:
             print(f"⚠️ Already withdrawn or not joined: {swiss_id}")
             return True
         else:
-            print(f"❌ Failed to withdraw {swiss_id} | Status {res.status_code}")
-            return False
+            print(f"❌ Withdraw failed {swiss_id}: {res.status_code}")
     except requests.RequestException as e:
-        print(f"❗ Withdraw request failed for {swiss_id}: {e}")
-        return False
-
-def is_joined(token, swiss_id):
-    """Quickly check if still joined — simplified heuristic."""
-    headers = {
-        "Accept": "application/json",
-        "Authorization": f"Bearer {token}"
-    }
-    try:
-        res = requests.get(f"{API_ROOT}/swiss/{swiss_id}", headers=headers, timeout=10)
-        if res.status_code != 200:
-            print(f"⚠️ Could not confirm join status for {swiss_id} (status {res.status_code})")
-            return None
-        data = res.json()
-        # We can’t perfectly tell without username, but assume if no withdraw success → still joined
-        return True
-    except requests.RequestException as e:
-        print(f"❗ Join check failed for {swiss_id}: {e}")
-        return None
+        print(f"❗ Withdraw request error for {swiss_id}: {e}")
+    return False
 
 # ────────────────── Main ──────────────────
 def main():
+    last_processed = {}  # store last processed Swiss IDs to avoid repeating
+    usernames = {}
+
+    # Preload usernames once
     for token in TOKENS:
-        print(f"\n=== Using token: {token[:8]}*** ===")
-        try:
+        usernames[token] = get_account_name(token)
+        print(f"✅ Loaded account: {usernames[token]}")
+
+    print("\n🚀 Running infinite Swiss monitor...\n")
+
+    while True:
+        for token in TOKENS:
+            username = usernames.get(token, "UnknownUser")
+            print(f"\n=== Checking for {username} ===")
+
             swisses = get_upcoming_swiss(token, TEAM_ID)
-        except requests.RequestException as e:
-            print(f"Failed to fetch Swiss list with token {token[:8]}***: {e}")
-            continue
-
-        now_ms = int(time.time() * 1000)
-        if not swisses:
-            print("No upcoming Swiss tournaments found. Skipping this token.")
-            continue
-
-        for s in swisses:
-            swiss_id = s["id"]
-            start_ms = s["_startsMs"]
-            sleep_sec = max((start_ms - now_ms) / 1000 - 3 * 60, 0)
-
-            print(f"Will withdraw from {swiss_id} in {int(sleep_sec)} seconds.")
-            if sleep_sec > 0:
-                time.sleep(sleep_sec)
-
-            print(f"⏰ Time reached! Attempting withdrawal for {swiss_id}...")
-            success = withdraw(token, swiss_id)
-
-            # Wait exactly 1 minute (not 2)
-            print(f"⏳ Waiting 1 minute before re-check for {swiss_id}...")
-            time.sleep(60)
-
-            # Check again
-            print(f"🔍 Checking if still joined in {swiss_id}...")
-            still_joined = not success  # simpler assumption
-            if still_joined:
-                print(f"🔁 Retrying withdrawal for {swiss_id}...")
-                withdraw(token, swiss_id)
-            else:
-                print(f"✅ Withdrawal verified or already done for {swiss_id}.")
+            if not swisses:
+                print("No upcoming Swiss tournaments.")
+                continue
 
             now_ms = int(time.time() * 1000)
+            for s in swisses:
+                swiss_id = s["id"]
+                start_ms = s["_startsMs"]
+                mins_left = (start_ms - now_ms) / 60000
+
+                if swiss_id in last_processed and (time.time() - last_processed[swiss_id]) < 7200:
+                    continue  # skip if processed recently
+
+                if mins_left <= 3 and mins_left > 0:
+                    print(f"⏰ {username}: Withdrawing from {swiss_id} (starts in {mins_left:.1f}m)")
+                    success = withdraw(token, swiss_id)
+                    last_processed[swiss_id] = time.time()
+
+                    print("⏳ Waiting 1 minute before retry check...")
+                    time.sleep(60)
+
+                    if not success:
+                        print(f"🔁 Retrying withdrawal for {swiss_id}...")
+                        withdraw(token, swiss_id)
+                    else:
+                        print(f"✅ Verified withdrawn for {swiss_id}")
+
+        print("\n🕒 Sleeping 5 minutes before next check...\n")
+        time.sleep(300)  # sleep 5 minutes before checking again
 
 if __name__ == "__main__":
     main()
