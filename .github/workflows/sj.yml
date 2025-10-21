@@ -27,4 +27,4 @@ jobs:
       - name: Kick members
         env:
           BR: ${{ secrets.L }}
-        run: python -u s.py "${{ github.event.inputs.team_id }}"
+        run: python -u kick.py "${{ github.event.inputs.team_id }}"
