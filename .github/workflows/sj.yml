@@ -1,0 +1,30 @@
+name: Kick Lichess Team Members
+
+on:
+  workflow_dispatch:
+    inputs:
+      team_id:
+        description: "Team ID (from lichess.org/team/<team_id>)"
+        required: true
+        type: string
+
+jobs:
+  kick_members:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Kick members
+        env:
+          BR: ${{ secrets.L }}
+        run: python -u s.py "${{ github.event.inputs.team_id }}"
