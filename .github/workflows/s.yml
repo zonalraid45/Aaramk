@@ -21,7 +21,7 @@ jobs:
 
       - name: Send messages from list.txt
         env:
-          BR: "${{ secrets.L }}"
+          BR: "${{ secrets.REAL }}"
         run: |
           while IFS= read -r username; do
             if [ -n "$username" ]; then
