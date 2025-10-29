@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -21,14 +23,12 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      # 🕒 Time check step — stop if before 18:30 IST today
+      # 🕒 Time check — cancel if before 18:30 IST
       - name: Check time (cancel if before 18:30 IST)
         id: timecheck
         run: |
           export TZ='Asia/Kolkata'
           current_ist_epoch=$(date '+%s')
-
-          # Get today's date and append 18:30:00
           target_ist_epoch=$(date -d "$(date +%Y-%m-%d) 18:30:00" '+%s')
 
           echo "🕒 Current IST: $(date '+%Y-%m-%d %H:%M:%S %Z')"
@@ -44,7 +44,7 @@ jobs:
             echo "✅ Target time reached, continuing..."
           fi
 
-      # 📤 Send messages once target time reached
+      # 📤 Send messages
       - name: Send messages from list.txt
         if: success()
         env:
@@ -65,21 +65,15 @@ jobs:
             fi
           done < list.txt
 
-      # 🚫 Disable this workflow after run (safe version)
-      - name: Disable this workflow after run
+      # 🧹 Delete msg.txt and list.txt from repo permanently
+      - name: Delete msg.txt and list.txt from repo
         if: success()
-        env:
-          GH_TOKEN: ${{ secrets.GH }}
         run: |
-          echo "🔒 Disabling workflow '${{ github.workflow }}'..."
-          workflow_file=$(basename "${{ github.workflow_ref }}" | cut -d'@' -f1)
-          echo "🗂 Workflow file: $workflow_file"
-
-          curl -s -X PUT \
-            -H "Authorization: token $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/$workflow_file/disable" \
-            | tee response.json
-
-          echo "✅ Workflow disable request sent."
-          cat response.json
+          echo "🧹 Deleting msg.txt and list.txt from repo..."
+          rm -f msg.txt list.txt
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add -u
+          git commit -m "🧹 Auto-delete msg.txt and list.txt after sending messages" || echo "No changes to commit"
+          git push
+          echo "✅ Files deleted and pushed successfully."
