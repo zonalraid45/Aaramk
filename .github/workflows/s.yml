@@ -3,7 +3,7 @@ name: Send Lichess Messages from list.txt
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 * * * *"  # runs every hour (at 00 min)
+    - cron: "0 * * * *"  # ⏰ runs every hour at minute 0
 
 jobs:
   send_messages:
@@ -21,30 +21,43 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      # 🕒 Time check step (cancel if before 18:30 IST, 29 Oct 2025)
+      # 🕒 Time check step — stop if before 18:30 IST 29 Oct 2025
       - name: Check time (cancel if before target)
+        id: timecheck
         run: |
-          # Convert current UTC time to IST (UTC+5:30)
-          current_time=$(date -u '+%s')
-          ist_time=$((current_time + 19800))  # +5 hours 30 minutes = 19800 seconds
+          # Work in IST timezone
+          export TZ='Asia/Kolkata'
 
-          # Target: 2025-10-29 18:30 IST → in UTC that's 2025-10-29 13:00
-          target_epoch=$(date -u -d '2025-10-29 13:00:00' '+%s')
+          # Current IST timestamp
+          current_ist_epoch=$(date '+%s')
 
-          echo "Current IST time: $(date -u -d @$ist_time)"
-          echo "Target IST time:  Wed, 29 Oct 2025 18:30"
-          
-          if [ "$ist_time" -lt "$target_epoch" ]; then
-            echo "⏳ Not yet 18:30 IST on 29 Oct 2025 — stopping workflow."
-            exit 0
+          # Target time: 2025-10-29 18:30:00 IST
+          target_ist_epoch=$(date -d '2025-10-29 18:30:00' '+%s')
+
+          echo "🕒 Current IST: $(date '+%Y-%m-%d %H:%M:%S %Z')"
+          echo "🎯 Target IST : 2025-10-29 18:30:00 IST"
+
+          if [ "$current_ist_epoch" -lt "$target_ist_epoch" ]; then
+            remaining=$((target_ist_epoch - current_ist_epoch))
+            hrs=$((remaining / 3600))
+            mins=$(((remaining % 3600) / 60))
+            echo "⏳ Not yet 18:30 IST — about ${hrs}h ${mins}m left. Cancelling workflow."
+            exit 78  # cancel job cleanly
           else
             echo "✅ Target time reached, continuing..."
           fi
 
+      # 📤 Send messages once target time reached
       - name: Send messages from list.txt
+        if: success()
         env:
-          BR: ${{ secrets.L }}
+          BR: ${{ secrets.REAL }}
         run: |
+          if [ ! -f list.txt ]; then
+            echo "❌ list.txt not found!"
+            exit 1
+          fi
+
           while IFS= read -r username; do
             if [ -n "$username" ]; then
               echo "📨 Sending message to $username"
