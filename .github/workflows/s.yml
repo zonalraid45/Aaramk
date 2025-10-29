@@ -1,15 +1,10 @@
-name: Send Lichess Message
+name: Send Lichess Messages from list.txt
 
 on:
   workflow_dispatch:
-    inputs:
-      player_name:
-        description: "Lichess username to message"
-        required: true
-        type: string
 
 jobs:
-  send_message:
+  send_messages:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,7 +19,14 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Send Lichess Message
+      - name: Send messages from list.txt
         env:
           BR: "${{ secrets.L }}"
-        run: python -u s.py "${{ github.event.inputs.player_name }}"
+        run: |
+          while IFS= read -r username; do
+            if [ -n "$username" ]; then
+              echo "📨 Sending message to $username"
+              python -u s.py "$username"
+              echo "----------------------------------------"
+            fi
+          done < list.txt
