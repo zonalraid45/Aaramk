@@ -21,16 +21,18 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      # 🕒 Time check step — stop if before 18:30 IST 29 Oct 2025
-      - name: Check time (cancel if before target)
+      # 🕒 Time check step — stop if before 18:30 IST today
+      - name: Check time (cancel if before 18:30 IST)
         id: timecheck
         run: |
           export TZ='Asia/Kolkata'
           current_ist_epoch=$(date '+%s')
-          target_ist_epoch=$(date -d '2025-10-29 18:30:00' '+%s')
+
+          # Get today's date and append 18:30:00
+          target_ist_epoch=$(date -d "$(date +%Y-%m-%d) 18:30:00" '+%s')
 
           echo "🕒 Current IST: $(date '+%Y-%m-%d %H:%M:%S %Z')"
-          echo "🎯 Target IST : 2025-10-29 18:30:00 IST"
+          echo "🎯 Target IST : $(date +%Y-%m-%d) 18:30:00 IST"
 
           if [ "$current_ist_epoch" -lt "$target_ist_epoch" ]; then
             remaining=$((target_ist_epoch - current_ist_epoch))
@@ -63,14 +65,21 @@ jobs:
             fi
           done < list.txt
 
-      # 🚫 Disable this workflow after run
+      # 🚫 Disable this workflow after run (safe version)
       - name: Disable this workflow after run
+        if: success()
         env:
           GH_TOKEN: ${{ secrets.GH }}
         run: |
           echo "🔒 Disabling workflow '${{ github.workflow }}'..."
-          curl -X PUT \
+          workflow_file=$(basename "${{ github.workflow_ref }}" | cut -d'@' -f1)
+          echo "🗂 Workflow file: $workflow_file"
+
+          curl -s -X PUT \
             -H "Authorization: token $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/${{ github.repository }}/actions/workflows/${{ github.workflow }}/disable
-          echo "✅ Workflow disabled successfully."
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/$workflow_file/disable" \
+            | tee response.json
+
+          echo "✅ Workflow disable request sent."
+          cat response.json
