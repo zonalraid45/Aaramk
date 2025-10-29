@@ -25,13 +25,8 @@ jobs:
       - name: Check time (cancel if before target)
         id: timecheck
         run: |
-          # Work in IST timezone
           export TZ='Asia/Kolkata'
-
-          # Current IST timestamp
           current_ist_epoch=$(date '+%s')
-
-          # Target time: 2025-10-29 18:30:00 IST
           target_ist_epoch=$(date -d '2025-10-29 18:30:00' '+%s')
 
           echo "🕒 Current IST: $(date '+%Y-%m-%d %H:%M:%S %Z')"
@@ -42,7 +37,7 @@ jobs:
             hrs=$((remaining / 3600))
             mins=$(((remaining % 3600) / 60))
             echo "⏳ Not yet 18:30 IST — about ${hrs}h ${mins}m left. Cancelling workflow."
-            exit 78  # cancel job cleanly
+            exit 78
           else
             echo "✅ Target time reached, continuing..."
           fi
@@ -67,3 +62,15 @@ jobs:
               sleep 3
             fi
           done < list.txt
+
+      # 🚫 Disable this workflow after run
+      - name: Disable this workflow after run
+        env:
+          GH_TOKEN: ${{ secrets.GH }}
+        run: |
+          echo "🔒 Disabling workflow '${{ github.workflow }}'..."
+          curl -X PUT \
+            -H "Authorization: token $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/actions/workflows/${{ github.workflow }}/disable
+          echo "✅ Workflow disabled successfully."
