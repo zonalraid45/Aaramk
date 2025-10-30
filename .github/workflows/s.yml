@@ -23,22 +23,22 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      # 🕒 Time check — cancel if before 18:30 IST
-      - name: Check time (cancel if before 18:30 IST)
+      # 🕒 Time check — cancel if before 31 Oct 2025 18:30 IST
+      - name: Check time (cancel if before 31 Oct 2025 18:30 IST)
         id: timecheck
         run: |
           export TZ='Asia/Kolkata'
           current_ist_epoch=$(date '+%s')
-          target_ist_epoch=$(date -d "$(date +%Y-%m-%d) 18:30:00" '+%s')
+          target_ist_epoch=$(date -d "2025-10-31 18:30:00" '+%s')
 
           echo "🕒 Current IST: $(date '+%Y-%m-%d %H:%M:%S %Z')"
-          echo "🎯 Target IST : $(date +%Y-%m-%d) 18:30:00 IST"
+          echo "🎯 Target IST : 2025-10-31 18:30:00 IST"
 
           if [ "$current_ist_epoch" -lt "$target_ist_epoch" ]; then
             remaining=$((target_ist_epoch - current_ist_epoch))
             hrs=$((remaining / 3600))
             mins=$(((remaining % 3600) / 60))
-            echo "⏳ Not yet 18:30 IST — about ${hrs}h ${mins}m left. Cancelling workflow."
+            echo "⏳ Not yet 31 Oct 2025 18:30 IST — about ${hrs}h ${mins}m left. Cancelling workflow."
             exit 78
           else
             echo "✅ Target time reached, continuing..."
