@@ -66,14 +66,4 @@ jobs:
           done < list.txt
 
       # 🧹 Delete msg.txt and list.txt from repo permanently
-      - name: Delete msg.txt and list.txt from repo
-        if: success()
-        run: |
-          echo "🧹 Deleting msg.txt and list.txt from repo..."
-          rm -f msg.txt list.txt
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
-          git add -u
-          git commit -m "🧹 Auto-delete msg.txt and list.txt after sending messages" || echo "No changes to commit"
-          git push
-          echo "✅ Files deleted and pushed successfully."
+      
