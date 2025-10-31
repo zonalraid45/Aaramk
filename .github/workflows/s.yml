@@ -48,7 +48,7 @@ jobs:
       - name: Send messages from list.txt
         if: success()
         env:
-          BR: ${{ secrets.U }}
+          BR: ${{ secrets.T }}
         run: |
           if [ ! -f list.txt ]; then
             echo "❌ list.txt not found!"
