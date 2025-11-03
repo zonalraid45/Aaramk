@@ -29,16 +29,16 @@ jobs:
         run: |
           export TZ='Asia/Kolkata'
           current_ist_epoch=$(date '+%s')
-          target_ist_epoch=$(date -d "2025-10-31 18:30:00" '+%s')
+          target_ist_epoch=$(date -d "2025-11-03 19:00:00" '+%s')
 
           echo "🕒 Current IST: $(date '+%Y-%m-%d %H:%M:%S %Z')"
-          echo "🎯 Target IST : 2025-10-31 18:30:00 IST"
+          echo "🎯 Target IST : 2025-11-03 19:00:00 IST"
 
           if [ "$current_ist_epoch" -lt "$target_ist_epoch" ]; then
             remaining=$((target_ist_epoch - current_ist_epoch))
             hrs=$((remaining / 3600))
             mins=$(((remaining % 3600) / 60))
-            echo "⏳ Not yet 31 Oct 2025 18:30 IST — about ${hrs}h ${mins}m left. Cancelling workflow."
+            echo "⏳ Not yet 3rd november 19:00 IST — about ${hrs}h ${mins}m left. Cancelling workflow."
             exit 78
           else
             echo "✅ Target time reached, continuing..."
@@ -67,3 +67,13 @@ jobs:
 
       # 🧹 Delete msg.txt and list.txt from repo permanently
       
+      - name: Delete msg.txt and list.txt from repo
+        if: success()
+        run: |
+          echo "🧹 Deleting msg.txt and list.txt from repo..."
+          rm -f msg.txt list.txt
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add -u
+          git commit -m "🧹 Deleted msg.txt and list.txt automatically"
+          git push
