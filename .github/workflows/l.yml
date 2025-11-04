@@ -22,4 +22,4 @@ jobs:
         env:
           L_TOKEN: ${{ secrets.T }}
           T_TOKEN: ${{ secrets.U }}
-        run: python auto_join.py
+        run: python -u k.py
