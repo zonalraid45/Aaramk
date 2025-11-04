@@ -1,32 +1,38 @@
-import requests, os, time
+import requests, os, time, json
 
 TEAM_ID = "chess-blasters-2"
 L_TOKEN = os.getenv("L_TOKEN")
 T_TOKEN = os.getenv("T_TOKEN")
 
-# your Lichess usernames (for identifying joins)
+# ✅ Correct usernames
 L_USERNAME = "raja1544"
 T_USERNAME = "unrealboy9000"
 
 def get_swiss_list():
-    """Get all Swiss tournaments of the team that are created or started."""
+    """Fetch all Swiss tournaments of the team (NDJSON format)."""
     url = f"https://lichess.org/api/team/{TEAM_ID}/swiss"
     r = requests.get(url)
-    if r.ok:
-        data = r.json()
-        return [s['id'] for s in data if s.get('status') in ['created', 'started']]
-    print("Error fetching Swiss list:", r.status_code)
-    return []
+    if not r.ok:
+        print("Error fetching Swiss list:", r.status_code)
+        return []
+
+    swisses = []
+    for line in r.text.splitlines():
+        try:
+            obj = json.loads(line)
+            if obj.get("status") in ["created", "started"]:
+                swisses.append(obj["id"])
+        except Exception:
+            continue  # skip malformed lines
+    return swisses
 
 def get_players_text(swiss_id, token):
-    """Get all players in a Swiss as plain text."""
     url = f"https://lichess.org/api/swiss/{swiss_id}/players"
     headers = {"Authorization": f"Bearer {token}"}
     r = requests.get(url, headers=headers)
     return r.text.lower() if r.ok else ""
 
 def join_swiss(swiss_id, token):
-    """Make account join a Swiss."""
     url = f"https://lichess.org/api/swiss/{swiss_id}/join"
     headers = {"Authorization": f"Bearer {token}"}
     r = requests.post(url, headers=headers)
