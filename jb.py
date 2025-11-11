@@ -16,7 +16,7 @@ for name in TOKEN_NAMES:
         TOKENS.append(val.strip('"').strip("'"))
 
 if not TOKENS:
-    raise SystemExit("❌ No tokens found! Please export LICHESS_KEY, LICHESS_KEYS, T, or L")
+    raise SystemExit("❌ No tokens found! Please export LICHESS_KEY, LICHESS_KEYS, T, W, or L")
 
 API_ROOT = "https://lichess.org/api"
 
