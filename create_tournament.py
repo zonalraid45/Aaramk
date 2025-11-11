@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo   # Python ≥3.9
 
 # ─────────────── Settings ───────────────
 TOKEN   = os.environ["LICHESS_KEY"].strip('"')
-TEAM    = "chess-blasters-2"
+TEAM    = "online-world-chess-lovers"
 ROUNDS  = 7
 IST     = ZoneInfo("Asia/Kolkata")
 
@@ -24,56 +24,32 @@ except FileNotFoundError:
     raise SystemExit("❌ description.txt not found!")
 
 # ─────────────── Timetable ───────────────
+# ─────────────── Timetable ───────────────
 SCHEDULE = [
-    #  time ,      title,      min, inc
-    ("00:00", "Cash Tournament Qualifier",    10,  0),
-    ("00:30", "Cash Tournament Qualifier",     7,  2),
-    ("01:00", "Cash Tournament Qualifier",     3,  2),
-    ("01:30", "Cash Tournament Qualifier",     3,  0),
-    ("02:00", "Cash Tournament Qualifier",     5,  0),
-    ("02:30", "Cash Tournament Qualifier",    10,  5),
-    ("03:00", "Cash Tournament Qualifier",    10,  0),
-    ("03:30", "Cash Tournament Qualifier",     7,  2),
-    ("04:00", "Cash Tournament Qualifier",     3,  2),
-    ("04:30", "Cash Tournament Qualifier",     3,  0),
-    ("05:00", "Cash Tournament Qualifier",     5,  0),
-    ("05:30", "Cash Tournament Qualifier",     3,  1),
-    ("06:00", "Cash Tournament Qualifier",    10,  0),
-    ("06:30", "Cash Tournament Qualifier",     7,  2),
-    ("07:00", "Cash Tournament Qualifier",     3,  2),
-    ("07:30", "Cash Tournament Qualifier",     3,  0),
-    ("08:00", "Cash Tournament Qualifier",     5,  0),
-    ("08:30", "Cash Tournament Qualifier",    10,  5),
-    ("09:00", "Cash Tournament Qualifier",    10,  0),
-    ("09:30", "Cash Tournament Qualifier",     7,  2),
-    ("10:00", "Cash Tournament Qualifier",     3,  2),
-    ("10:30", "Cash Tournament Qualifier",     3,  0),
-    ("11:00", "Cash Tournament Qualifier",     5,  0),
-    ("11:30", "Cash Tournament Qualifier",     3,  0),
-    ("12:00", "Cash Tournament Qualifier",     3,  1),
-    ("12:30", "Cash Tournament Qualifier",    10,  0),
-    ("13:00", "Cash Tournament Qualifier",     7,  2),
-    ("13:30", "Cash Tournament Qualifier",     3,  2),
-    ("14:00", "Cash Tournament Qualifier",     3,  0),
-    ("14:30", "Cash Tournament Qualifier",     5,  0),
-    ("15:00", "Cash Tournament Qualifier",    10,  5),
-    ("15:30", "Cash Tournament Qualifier",    10,  0),
-    ("16:00", "Cash Tournament Qualifier",     7,  2),
-    ("16:30", "Cash Tournament Qualifier",     3,  2),
-    ("17:00", "Cash Tournament Qualifier",     3,  0),
-    ("17:30", "Cash Tournament Qualifier",     5,  0),
-    ("18:00", "Cash Tournament Qualifier",     3,  1),
-    ("18:30", "Cash Tournament Qualifier",    10,  0),
-    ("19:00", "Cash Tournament Qualifier",     7,  2),
-    ("19:30", "Cash Tournament Qualifier",     3,  2),
-    ("20:00", "Cash Tournament Qualifier",     3,  0),
-    ("20:30", "Cash Tournament Qualifier",     5,  0),
-    ("21:00", "Cash Tournament Qualifier",    10,  5),
-    ("21:30", "Cash Tournament Qualifier",    10,  0),
-    ("22:00", "Cash Tournament Qualifier",     7,  2),
-    ("22:30", "Cash Tournament Qualifier",     3,  2),
-    ("23:00", "Cash Tournament Qualifier",     3,  1),
-    ("23:30", "Cash Tournament Qualifier",     5,  0),
+    ("00:20", "Cash Tournament Qualifier", 10, 0),
+    ("01:20", "Cash Tournament Qualifier", 3, 2),
+    ("02:20", "Cash Tournament Qualifier", 5, 0),
+    ("03:20", "Cash Tournament Qualifier", 7, 2),
+    ("04:20", "Cash Tournament Qualifier", 3, 0),
+    ("05:20", "Cash Tournament Qualifier", 5, 2),
+    ("06:20", "Cash Tournament Qualifier", 10, 0),
+    ("07:20", "Cash Tournament Qualifier", 5, 2),
+    ("08:20", "Cash Tournament Qualifier", 3, 0),
+    ("09:20", "Cash Tournament Qualifier", 10, 0),
+    ("10:20", "Cash Tournament Qualifier", 3, 2),
+    ("11:20", "Cash Tournament Qualifier", 5, 0),
+    ("12:20", "Cash Tournament Qualifier", 7, 2),
+    ("13:20", "Cash Tournament Qualifier", 3, 0),
+    ("14:20", "Cash Tournament Qualifier", 5, 2),
+    ("15:20", "Cash Tournament Qualifier", 10, 5),
+    ("16:20", "Cash Tournament Qualifier", 5, 0),
+    ("17:20", "Cash Tournament Qualifier", 3, 0),
+    ("18:20", "Cash Tournament Qualifier", 5, 2),
+    ("19:20", "Cash Tournament Qualifier", 10, 0),
+    ("20:20", "Cash Tournament Qualifier", 7, 2),
+    ("21:20", "Cash Tournament Qualifier", 3, 2),
+    ("22:20", "Cash Tournament Qualifier", 5, 0),
+    ("23:20", "Cash Tournament Qualifier", 3, 0),
 ]
 
 # ─────────────── Helper ───────────────
