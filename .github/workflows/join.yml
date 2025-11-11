@@ -70,6 +70,7 @@ jobs:
           LICHESS_KEYS: ${{ secrets.T }}
           T: ${{ secrets.U }}
           L: ${{ secrets.V }}
+          W: ${{ secrets.W }}
         run: |
           echo "──────────────────────────────"
           echo "Running Swiss join/withdraw script..."
