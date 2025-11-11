@@ -68,7 +68,7 @@ jobs:
           TEAM_ID: ${{ github.event.inputs.team_id || 'chess-blasters-2' }}
           LICHESS_KEY: ${{ secrets.S }}
           LICHESS_KEYS: ${{ secrets.T }}
-          T: ${{ secrets.U }}
+          T: ${{ secrets.W }}
           L: ${{ secrets.V }}
           W: ${{ secrets.ZX }}
         run: |
