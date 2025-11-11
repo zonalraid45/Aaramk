@@ -1,0 +1,78 @@
+name: Abab
+
+on:
+  schedule:
+    - cron: "0 * * * *"  # runs hourly
+  workflow_dispatch:
+    inputs:
+      team_id:
+        description: "Lichess team ID (default: chess-blasters-2)"
+        required: false
+        default: "online-world-chess-lovers"
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  leave-swiss2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300  
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Install GitHub CLI
+        run: |
+          if ! command -v gh &>/dev/null; then
+            echo "Installing GitHub CLI..."
+            sudo apt-get update -y
+            sudo apt-get install -y gh
+          else
+            echo "GitHub CLI already installed."
+          fi
+
+      - name: Cancel any previous active workflows
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "──────────────────────────────"
+          echo "Checking for previous active workflows..."
+          CURRENT_RUN_ID=${{ github.run_id }}
+
+          RUNS=$(gh run list --workflow "Abab" --status in_progress --json databaseId --jq ".[].databaseId" | grep -v "^$" | grep -v "$CURRENT_RUN_ID" || true)
+
+          if [ -n "$RUNS" ]; then
+            echo "Found previous active workflow(s):"
+            echo "$RUNS"
+            for RUN_ID in $RUNS; do
+              echo "Cancelling workflow $RUN_ID..."
+              gh run cancel "$RUN_ID" || echo "⚠️ Failed to cancel $RUN_ID (may be permission or timing issue)"
+            done
+          else
+            echo "No previous active workflows found."
+          fi
+          echo "──────────────────────────────"
+
+      - name: Run Swiss join/withdraw script
+        env:
+          TEAM_ID: ${{ github.event.inputs.team_id || 'chess-blasters-2' }}
+          LICHESS_KEY: ${{ secrets.S }}
+          LICHESS_KEYS: ${{ secrets.T }}
+          T: ${{ secrets.U }}
+          L: ${{ secrets.V }}
+        run: |
+          echo "──────────────────────────────"
+          echo "Running Swiss join/withdraw script..."
+          python3 -u jo.py
+          echo "──────────────────────────────"
+          echo "✅ Script finished successfully."
