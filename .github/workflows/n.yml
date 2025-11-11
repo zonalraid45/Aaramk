@@ -1,4 +1,4 @@
-name: Abab
+name: Ababa
 
 on:
   schedule:
@@ -49,7 +49,7 @@ jobs:
           echo "Checking for previous active workflows..."
           CURRENT_RUN_ID=${{ github.run_id }}
 
-          RUNS=$(gh run list --workflow "Abab" --status in_progress --json databaseId --jq ".[].databaseId" | grep -v "^$" | grep -v "$CURRENT_RUN_ID" || true)
+          RUNS=$(gh run list --workflow "Ababa" --status in_progress --json databaseId --jq ".[].databaseId" | grep -v "^$" | grep -v "$CURRENT_RUN_ID" || true)
 
           if [ -n "$RUNS" ]; then
             echo "Found previous active workflow(s):"
