@@ -66,10 +66,8 @@ jobs:
       - name: Run Swiss join/withdraw script
         env:
           TEAM_ID: ${{ github.event.inputs.team_id || 'chess-blasters-2' }}
-          LICHESS_KEY: ${{ secrets.S }}
-          LICHESS_KEYS: ${{ secrets.T }}
           T: ${{ secrets.U }}
-          L: ${{ secrets.V }}
+          
         run: |
           echo "──────────────────────────────"
           echo "Running Swiss join/withdraw script..."
