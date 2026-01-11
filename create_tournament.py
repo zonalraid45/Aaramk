@@ -1,30 +1,27 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Create a full day of Swiss tournaments according to the timetable
-supplied by Utsa.  All times are interpreted
-"""
-import os, datetime as dt, pathlib, requests
-from zoneinfo import ZoneInfo   # Python ≥3.9
 
-# ─────────────── Settings ───────────────
-TOKEN   = os.environ["LICHESS_KEY"].strip('"')
-TEAM    = "online-world-chess-lovers"
-ROUNDS  = 7
-IST     = ZoneInfo("Asia/Kolkata")
+import os
+import datetime as dt
+import pathlib
+import requests
+from zoneinfo import ZoneInfo
+
+TOKEN = os.environ["LICHESS_KEY"].strip('"')
+TEAM = "online-world-chess-lovers"
+ROUNDS = 7
+IST = ZoneInfo("Asia/Kolkata")
+DELAY_DAYS = 3
 
 headers = {"Authorization": f"Bearer {TOKEN}"}
-URL     = f"https://lichess.org/api/swiss/new/{TEAM}"
+URL = f"https://lichess.org/api/swiss/new/{TEAM}"
 
-# ---------- read long description once ----------
 DESC_FILE = pathlib.Path(__file__).with_name("description.txt")
 try:
     LONG_DESC = DESC_FILE.read_text(encoding="utf-8").strip()
 except FileNotFoundError:
     raise SystemExit("❌ description.txt not found!")
 
-# ─────────────── Timetable ───────────────
-# ─────────────── Timetable ───────────────
 SCHEDULE = [
     ("00:20", "Cash Tournament Qualifier", 10, 0),
     ("01:20", "Cash Tournament Qualifier", 3, 2),
@@ -52,38 +49,38 @@ SCHEDULE = [
     ("23:20", "Cash Tournament Qualifier", 3, 0),
 ]
 
-# ─────────────── Helper ───────────────
-def next_occurrence(time_str: str) -> dt.datetime:
-    """Return the next datetime (≥ now + 5 min) for HH:MM in IST."""
+def scheduled_time_utc(time_str: str) -> dt.datetime:
     hh, mm = map(int, time_str.split(":"))
-    today   = dt.date.today()
     now_ist = dt.datetime.now(IST)
-    cand    = dt.datetime.combine(today, dt.time(hh, mm), tzinfo=IST)
-    if cand < now_ist + dt.timedelta(minutes=5):
-        cand += dt.timedelta(days=1)
-    return cand.astimezone(dt.timezone.utc)   # convert to UTC
+    target_date = (now_ist + dt.timedelta(days=DELAY_DAYS)).date()
+    start_ist = dt.datetime.combine(
+        target_date,
+        dt.time(hh, mm),
+        tzinfo=IST
+    )
+    return start_ist.astimezone(dt.timezone.utc)
 
-def create_tmt(idx: int, name: str, minutes: int, inc: int, start_utc: dt.datetime) -> None:
+def create_tmt(name: str, minutes: int, inc: int, start_utc: dt.datetime) -> None:
     payload = {
-        "name":                    f"{name}"[:30],
-        "clock.limit":             minutes * 60,
-        "clock.increment":         inc,
-        "startsAt":                start_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "nbRounds":                ROUNDS,
-        # No explicit interval -> Lichess chooses automatic
-        "variant":                 "standard",
-        "rated":                   "true",
-        "description":             LONG_DESC,
-        "conditions.playYourGames": "true",  # Enforce must-play condition
+        "name": name[:30],
+        "clock.limit": minutes * 60,
+        "clock.increment": inc,
+        "startsAt": start_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "nbRounds": ROUNDS,
+        "variant": "standard",
+        "rated": "true",
+        "description": LONG_DESC,
+        "conditions.playYourGames": "true",
     }
-    r = requests.post(URL, headers=headers, data=payload, timeout=15)
-    if r.status_code == 200:
-        print(f"✅  {payload['name']:<25} → {r.json().get('url')}")
-    else:
-        print(f"❌  {payload['name']:<25} ({r.status_code}) {r.text[:120]}")
 
-# ─────────────── Main ───────────────
+    r = requests.post(URL, headers=headers, data=payload, timeout=15)
+
+    if r.status_code == 200:
+        print(f"✅ {name:<25} → {r.json().get('url')}")
+    else:
+        print(f"❌ {name:<25} ({r.status_code}) {r.text[:120]}")
+
 if __name__ == "__main__":
-    for idx, (t, title, mins, inc) in enumerate(SCHEDULE):
-        start = next_occurrence(t)
-        create_tmt(idx, title, mins, inc, start)
+    for time_str, title, mins, inc in SCHEDULE:
+        start = scheduled_time_utc(time_str)
+        create_tmt(title, mins, inc, start)
