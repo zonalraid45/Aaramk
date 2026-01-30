@@ -11,7 +11,7 @@ TOKEN = os.environ["LICHESS_KEY"].strip('"')
 TEAM = "online-world-chess-lovers"
 ROUNDS = 7
 IST = ZoneInfo("Asia/Kolkata")
-DELAY_DAYS = 3
+DELAY_DAYS = 4
 
 headers = {"Authorization": f"Bearer {TOKEN}"}
 URL = f"https://lichess.org/api/swiss/new/{TEAM}"
